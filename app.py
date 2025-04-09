@@ -31,7 +31,7 @@ if search_keyword:
 df = df.sort_values(by="URL")
 
 # App Header
-st.title("🌐 Offshore & Energy News Dashboard")
+st.title("🌐 COSCO News Dashboard")
 st.caption(f"🗓️ Last Updated: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M')}")
 
 # ✅ Dashboard Visuals
