@@ -3,18 +3,20 @@ import pandas as pd
 from bs4 import BeautifulSoup
 from transformers import pipeline
 from urllib.parse import urljoin, urlparse
-import torch  # ✅ Explicitly import torch to enforce 'pt' backend
+import torch
+import os  # ✅ For correct CSV path
 
-# ✅ Load summarization pipeline with CPU-safe model
+# ✅ Load summarization pipeline with a CPU-compatible model
 summarizer = pipeline(
     "summarization",
     model="sshleifer/distilbart-cnn-12-6",
     tokenizer="sshleifer/distilbart-cnn-12-6",
-    framework="pt",      # ✅ Explicitly use PyTorch
-    device=-1,           # ✅ Force CPU
-    cache_dir=".models"  # ✅ Cache to avoid re-downloading
+    framework="pt",
+    device=-1,  # ✅ CPU
+    cache_dir=".models"
 )
 
+# ✅ News sites to scrape
 urls_to_scrape = [
     "https://www.offshorewind.biz/",
     "https://www.upstreamonline.com/",
@@ -27,25 +29,30 @@ urls_to_scrape = [
     "https://www.tradewindsnews.com/"
 ]
 
+# ✅ Filter keywords
 keywords = [
     "FID", "LNG", "Offshore", "Drilling", "Shell", "Transocean",
     "Floating Wind", "Pipelay Vessel"
 ]
 
+# ✅ Skip these link patterns
 skip_words = [
     "about", "privacy", "cookie", "contact", "events", "magazine", "tag", "topic",
     "category", "terms", ".pdf", "advertise", "media", "jobs", "newsletter", "feedback"
 ]
 
+# ✅ Article container classes
 article_classes = [
     "article__body", "entry-content", "article-body", "post-content", "main-content",
     "td-post-content", "article-content", "single-content", "c-article-body"
 ]
 
+# ✅ Get base domain from URL
 def get_base_domain(url):
     parsed = urlparse(url)
     return f"{parsed.scheme}://{parsed.netloc}"
 
+# ✅ Extract article links from a site
 def extract_article_links(site_url):
     try:
         headers = {"User-Agent": "Mozilla/5.0"}
@@ -71,6 +78,7 @@ def extract_article_links(site_url):
         print(f"❌ Error loading {site_url}: {e}")
         return []
 
+# ✅ Extract article content
 def extract_content(url):
     try:
         headers = {"User-Agent": "Mozilla/5.0"}
@@ -90,6 +98,7 @@ def extract_content(url):
         print(f"⚠️ Error extracting from {url}: {e}")
         return None
 
+# ✅ Summarize text using model
 def summarize(text):
     try:
         if not text or len(text.split()) < 50:
@@ -100,8 +109,10 @@ def summarize(text):
         print(f"⚠️ Summarization error: {e}")
         return "Summary failed."
 
+# ✅ Main function to run scraping and save to CSV
 def run_scraper():
     all_results = []
+
     for site in urls_to_scrape:
         print(f"\n🌐 Scraping: {site}")
         articles = extract_article_links(site)
@@ -120,6 +131,10 @@ def run_scraper():
             print(f"✅ Summary: {summary[:80]}...\n{'-'*60}")
 
     df = pd.DataFrame(all_results)
-    df.to_csv("all_sites_summaries3.csv", index=False)
-    print("\n📦 All results saved to all_sites_summaries3.csv")
 
+    # ✅ Save next to app.py no matter where run from
+    csv_path = os.path.join(os.path.dirname(__file__), "all_sites_summaries3.csv")
+    df.to_csv(csv_path, index=False)
+
+    print(f"\n📦 All results saved to {csv_path}")
+    print(f"📝 Total Articles Saved: {len(df)}")
