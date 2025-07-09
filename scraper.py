@@ -7,7 +7,8 @@ from transformers import pipeline
 from urllib.parse import urljoin, urlparse
 
 def run_scraper():
-    summarizer = pipeline("summarization", model="t5-small")
+    summarizer = pipeline("summarization", model="sshleifer/distilbart-cnn-12-6", cache_dir=".models")
+
 
     urls_to_scrape = [
         "https://www.offshorewind.biz/",
