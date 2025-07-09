@@ -7,21 +7,17 @@ from datetime import datetime
 import torch
 import os
 
-# ----------------------------------------
-# 🔧 Load Summarization Model (CPU-friendly)
-# ----------------------------------------
+# ✅ Load summarization model (CPU only)
 summarizer = pipeline(
     "summarization",
     model="sshleifer/distilbart-cnn-12-6",
     tokenizer="sshleifer/distilbart-cnn-12-6",
     framework="pt",
-    device=-1,           # CPU only
-    cache_dir=".models"  # ✅ avoid re-downloading
+    device=-1,
+    cache_dir=".models"
 )
 
-# ----------------------------------------
-# 🌍 Websites and Keywords
-# ----------------------------------------
+# ✅ Target websites
 urls_to_scrape = [
     "https://www.offshorewind.biz/",
     "https://www.upstreamonline.com/",
@@ -48,10 +44,6 @@ article_classes = [
     "article__body", "entry-content", "article-body", "post-content", "main-content",
     "td-post-content", "article-content", "single-content", "c-article-body"
 ]
-
-# ----------------------------------------
-# 🔍 Utility Functions
-# ----------------------------------------
 
 def get_base_domain(url):
     parsed = urlparse(url)
@@ -111,20 +103,16 @@ def summarize(text):
         print(f"⚠️ Summarization error: {e}")
         return "Summary failed."
 
-# ----------------------------------------
-# 🚀 Run the Full Scraper
-# ----------------------------------------
-
 def run_scraper():
     all_results = []
 
     for site in urls_to_scrape:
         print(f"\n🌐 Scraping: {site}")
         articles = extract_article_links(site)
-        print(f"🔎 Found {len(articles)} articles")
+        print(f"✅ Found {len(articles)} keyword-matching articles.")
 
         for title, url in articles:
-            print(f"📰 {title}\n🔗 {url}")
+            print(f"🔎 {title}\n🔗 {url}")
             content = extract_content(url)
             summary = summarize(content)
             all_results.append({
@@ -134,11 +122,11 @@ def run_scraper():
                 "Summary": summary,
                 "Scraped_At": datetime.now().strftime("%Y-%m-%d %H:%M")
             })
+            print(f"✅ Summary: {summary[:80]}...\n{'-'*60}")
 
     df = pd.DataFrame(all_results)
 
-    # ✅ Save to CSV near app.py
-    csv_path = os.path.join(os.path.dirname(__file__), "all_sites_summaries3.csv")
-    df.to_csv(csv_path, index=False)
-
-    print(f"\n✅ Saved {len(df)} articles to {csv_path}")
+    # ✅ Save directly (no __file__ path logic)
+    df.to_csv("all_sites_summaries3.csv", index=False)
+    print(f"\n📦 CSV updated: all_sites_summaries3.csv")
+    print(f"📝 Total Articles Saved: {len(df)}")
