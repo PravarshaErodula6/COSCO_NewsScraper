@@ -7,7 +7,6 @@ from datetime import datetime
 import torch
 import os
 
-# ✅ Load summarization model (CPU only)
 summarizer = pipeline(
     "summarization",
     model="sshleifer/distilbart-cnn-12-6",
@@ -17,7 +16,6 @@ summarizer = pipeline(
     cache_dir=".models"
 )
 
-# ✅ Target websites
 urls_to_scrape = [
     "https://www.offshorewind.biz/",
     "https://www.upstreamonline.com/",
@@ -126,7 +124,9 @@ def run_scraper():
 
     df = pd.DataFrame(all_results)
 
-    # ✅ Save directly (no __file__ path logic)
-    df.to_csv("all_sites_summaries3.csv", index=False)
-    print(f"\n📦 CSV updated: all_sites_summaries3.csv")
+    # Save CSV right beside app.py
+    csv_path = os.path.join(os.path.dirname(__file__), "all_sites_summaries3.csv")
+    df.to_csv(csv_path, index=False)
+
+    print(f"\n📦 CSV updated at: {csv_path}")
     print(f"📝 Total Articles Saved: {len(df)}")
