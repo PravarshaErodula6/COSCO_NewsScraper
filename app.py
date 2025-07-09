@@ -27,7 +27,6 @@ except Exception as e:
 # -----------------------------------------------
 st.sidebar.title("🛠️ Options")
 
-# ✅ Scrape latest news from all sites
 if st.sidebar.button("🔁 Scrape Latest News"):
     with st.spinner("Scraping... please wait."):
         try:
@@ -36,7 +35,6 @@ if st.sidebar.button("🔁 Scrape Latest News"):
         except Exception as e:
             st.error(f"❌ Scraper failed: {e}")
 
-# 🔍 Keyword filter
 search_keyword = st.sidebar.text_input("Enter keyword to filter articles")
 
 # -----------------------------------------------
@@ -47,24 +45,22 @@ def load_data():
     import os
     if not os.path.exists("all_sites_summaries3.csv"):
         st.warning("⚠️ CSV not found. Click 'Scrape Latest News' to generate it.")
-        return pd.DataFrame(columns=["Title", "URL", "Summary", "Site"])
-    
+        return pd.DataFrame(columns=["Title", "URL", "Summary", "Site", "Scraped_At"])
+
     try:
         df = pd.read_csv("all_sites_summaries3.csv")
         df.dropna(subset=["Title", "URL", "Summary"], inplace=True)
         return df
     except Exception as e:
         st.error(f"❌ Failed to load CSV: {e}")
-        return pd.DataFrame(columns=["Title", "URL", "Summary", "Site"])
+        return pd.DataFrame(columns=["Title", "URL", "Summary", "Site", "Scraped_At"])
 
 df = load_data()
 
-# 🔍 Filter by keyword
 if search_keyword:
     df = df[df["Title"].str.contains(search_keyword, case=False) | df["Summary"].str.contains(search_keyword, case=False)]
 
-# ✅ Sort articles by URL
-df = df.sort_values(by="URL")
+df = df.sort_values(by="Scraped_At", ascending=False)
 
 # -----------------------------------------------
 # 📊 Visualizations
@@ -96,11 +92,7 @@ else:
         st.subheader(row.Title)
         st.markdown(f"[🔗 Read Full Article]({row.URL})", unsafe_allow_html=True)
         st.write(row.Summary)
-
-        # ✅ Display scraped timestamp if available
-        if hasattr(row, "Scraped_At"):
-            st.caption(f"⏱️ Scraped At: {row.Scraped_At}")
-
+        st.caption(f"🕒 Scraped At: {row.Scraped_At}")
         st.markdown("---")
 
 # -----------------------------------------------
