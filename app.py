@@ -96,6 +96,11 @@ else:
         st.subheader(row.Title)
         st.markdown(f"[🔗 Read Full Article]({row.URL})", unsafe_allow_html=True)
         st.write(row.Summary)
+
+        # ✅ Display scraped timestamp if available
+        if hasattr(row, "Scraped_At"):
+            st.caption(f"⏱️ Scraped At: {row.Scraped_At}")
+
         st.markdown("---")
 
 # -----------------------------------------------
