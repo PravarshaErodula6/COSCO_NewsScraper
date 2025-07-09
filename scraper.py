@@ -7,17 +7,21 @@ from datetime import datetime
 import torch
 import os
 
-# ✅ Load summarization pipeline (CPU mode)
+# ----------------------------------------
+# 🔧 Load Summarization Model (CPU-friendly)
+# ----------------------------------------
 summarizer = pipeline(
     "summarization",
     model="sshleifer/distilbart-cnn-12-6",
     tokenizer="sshleifer/distilbart-cnn-12-6",
     framework="pt",
-    device=-1,           # CPU
-    cache_dir=".models"
+    device=-1,           # CPU only
+    cache_dir=".models"  # ✅ avoid re-downloading
 )
 
-# ✅ Target websites
+# ----------------------------------------
+# 🌍 Websites and Keywords
+# ----------------------------------------
 urls_to_scrape = [
     "https://www.offshorewind.biz/",
     "https://www.upstreamonline.com/",
@@ -30,30 +34,29 @@ urls_to_scrape = [
     "https://www.tradewindsnews.com/"
 ]
 
-# ✅ Filter keywords
 keywords = [
     "FID", "LNG", "Offshore", "Drilling", "Shell", "Transocean",
     "Floating Wind", "Pipelay Vessel"
 ]
 
-# ✅ Skip patterns
 skip_words = [
     "about", "privacy", "cookie", "contact", "events", "magazine", "tag", "topic",
     "category", "terms", ".pdf", "advertise", "media", "jobs", "newsletter", "feedback"
 ]
 
-# ✅ Article body class patterns
 article_classes = [
     "article__body", "entry-content", "article-body", "post-content", "main-content",
     "td-post-content", "article-content", "single-content", "c-article-body"
 ]
 
-# ✅ Get domain from URL
+# ----------------------------------------
+# 🔍 Utility Functions
+# ----------------------------------------
+
 def get_base_domain(url):
     parsed = urlparse(url)
     return f"{parsed.scheme}://{parsed.netloc}"
 
-# ✅ Extract keyword-matching links
 def extract_article_links(site_url):
     try:
         headers = {"User-Agent": "Mozilla/5.0"}
@@ -79,7 +82,6 @@ def extract_article_links(site_url):
         print(f"❌ Error loading {site_url}: {e}")
         return []
 
-# ✅ Extract article text
 def extract_content(url):
     try:
         headers = {"User-Agent": "Mozilla/5.0"}
@@ -93,14 +95,12 @@ def extract_content(url):
                 if len(text) > 100:
                     return text.strip()[:3000]
 
-        # fallback
         text = " ".join(p.get_text() for p in soup.find_all("p"))
         return text.strip()[:3000] if len(text) > 100 else None
     except Exception as e:
         print(f"⚠️ Error extracting from {url}: {e}")
         return None
 
-# ✅ Summarize using transformers
 def summarize(text):
     try:
         if not text or len(text.split()) < 50:
@@ -111,17 +111,20 @@ def summarize(text):
         print(f"⚠️ Summarization error: {e}")
         return "Summary failed."
 
-# ✅ Full scraping pipeline
+# ----------------------------------------
+# 🚀 Run the Full Scraper
+# ----------------------------------------
+
 def run_scraper():
     all_results = []
 
     for site in urls_to_scrape:
         print(f"\n🌐 Scraping: {site}")
         articles = extract_article_links(site)
-        print(f"✅ Found {len(articles)} keyword-matching articles.")
+        print(f"🔎 Found {len(articles)} articles")
 
         for title, url in articles:
-            print(f"🔎 {title}\n🔗 {url}")
+            print(f"📰 {title}\n🔗 {url}")
             content = extract_content(url)
             summary = summarize(content)
             all_results.append({
@@ -131,14 +134,11 @@ def run_scraper():
                 "Summary": summary,
                 "Scraped_At": datetime.now().strftime("%Y-%m-%d %H:%M")
             })
-            print(f"✅ Summary: {summary[:80]}...\n{'-'*60}")
 
     df = pd.DataFrame(all_results)
 
-    # ✅ Save CSV where app.py can read it
+    # ✅ Save to CSV near app.py
     csv_path = os.path.join(os.path.dirname(__file__), "all_sites_summaries3.csv")
     df.to_csv(csv_path, index=False)
 
-    print(f"\n📦 CSV updated at: {csv_path}")
-    print(f"📝 Total Articles Saved: {len(df)}")
-
+    print(f"\n✅ Saved {len(df)} articles to {csv_path}")
