@@ -1,32 +1,21 @@
+from scraper import run_scraper  # ✅ Must be first
+
 import streamlit as st
 import pandas as pd
 import datetime
 import plotly.express as px
 from wordcloud import WordCloud
 import matplotlib.pyplot as plt
+import os
 
-# -----------------------------------------------
-# 🔍 Debug Block: Torch and Import Check
-# -----------------------------------------------
 st.title("🌐 COSCO News Dashboard")
-
-try:
-    import torch
-    st.success(f"✅ torch loaded: {torch.__version__}")
-except Exception as e:
-    st.error(f"❌ torch import failed: {e}")
-
-try:
-    from scraper import run_scraper
-    st.success("✅ scraper.py imported successfully")
-except Exception as e:
-    st.error(f"❌ scraper import failed: {e}")
 
 # -----------------------------------------------
 # 🛠️ Sidebar Controls
 # -----------------------------------------------
 st.sidebar.title("🛠️ Options")
 
+# ✅ Scrape latest news
 if st.sidebar.button("🔁 Scrape Latest News"):
     with st.spinner("Scraping... please wait."):
         try:
@@ -35,74 +24,69 @@ if st.sidebar.button("🔁 Scrape Latest News"):
         except Exception as e:
             st.error(f"❌ Scraper failed: {e}")
 
+# 🔍 Keyword filter
 search_keyword = st.sidebar.text_input("Enter keyword to filter articles")
 
 # -----------------------------------------------
-# 🗂️ Load the scraped data
+# 📄 Load CSV
 # -----------------------------------------------
 @st.cache_data
 def load_data():
-    import os
     if not os.path.exists("all_sites_summaries3.csv"):
         st.warning("⚠️ CSV not found. Click 'Scrape Latest News' to generate it.")
-        return pd.DataFrame(columns=["Title", "URL", "Summary", "Site", "Scraped_At"])
-
+        return pd.DataFrame(columns=["Site", "Title", "URL", "Summary", "Scraped_At"])
     try:
         df = pd.read_csv("all_sites_summaries3.csv")
         df.dropna(subset=["Title", "URL", "Summary"], inplace=True)
         return df
     except Exception as e:
         st.error(f"❌ Failed to load CSV: {e}")
-        return pd.DataFrame(columns=["Title", "URL", "Summary", "Site", "Scraped_At"])
+        return pd.DataFrame(columns=["Site", "Title", "URL", "Summary", "Scraped_At"])
 
 df = load_data()
 
+# 🔍 Filter
 if search_keyword:
     df = df[df["Title"].str.contains(search_keyword, case=False) | df["Summary"].str.contains(search_keyword, case=False)]
 
+# ✅ Sort
 df = df.sort_values(by="Scraped_At", ascending=False)
 
 # -----------------------------------------------
-# 📊 Visualizations
+# 📊 Visualization
 # -----------------------------------------------
 if not df.empty:
-    st.subheader("📊 Article Count by Source Site")
+    st.subheader("📊 Article Count by Site")
     site_counts = df['Site'].value_counts().reset_index()
     site_counts.columns = ['Site', 'Article Count']
-    fig = px.bar(site_counts, x='Site', y='Article Count', title="Number of Articles per Site")
+    fig = px.bar(site_counts, x='Site', y='Article Count')
     st.plotly_chart(fig, use_container_width=True)
 
-    st.subheader("☁️ Word Cloud of Article Titles")
-    title_text = ' '.join(df['Title'].dropna().tolist())
-    wordcloud = WordCloud(width=800, height=400, background_color='white').generate(title_text)
+    st.subheader("☁️ Word Cloud")
+    wordcloud = WordCloud(width=800, height=400, background_color='white').generate(' '.join(df['Title']))
     fig_wc, ax = plt.subplots(figsize=(10, 4))
     ax.imshow(wordcloud, interpolation='bilinear')
     ax.axis("off")
     st.pyplot(fig_wc)
 
 # -----------------------------------------------
-# 📄 Article Summaries
+# 📋 Show Articles
 # -----------------------------------------------
 if df.empty:
-    st.warning("No articles found. Try changing the keyword or scraping again.")
+    st.warning("No articles found.")
 else:
     for row in df.itertuples():
-        site_name = row.Site.replace("https://", "").replace("http://", "").replace("www.", "").rstrip("/")
-        st.markdown(f"🌐 **Source:** {site_name}")
+        st.markdown(f"🌐 **{row.Site}** · 🕒 _{row.Scraped_At}_")
         st.subheader(row.Title)
-        st.markdown(f"[🔗 Read Full Article]({row.URL})", unsafe_allow_html=True)
+        st.markdown(f"[🔗 Read Article]({row.URL})", unsafe_allow_html=True)
         st.write(row.Summary)
-        st.caption(f"🕒 Scraped At: {row.Scraped_At}")
         st.markdown("---")
 
 # -----------------------------------------------
-# ⬇️ CSV Download Option
+# ⬇️ Download
 # -----------------------------------------------
 if not df.empty:
-    csv = df.to_csv(index=False).encode('utf-8')
+    csv = df.to_csv(index=False).encode("utf-8")
     st.download_button("⬇️ Download CSV", csv, "cosco_summaries.csv", "text/csv")
 
-# -----------------------------------------------
-# 🧾 Footer
-# -----------------------------------------------
-st.markdown("🛠️ Built by **Surya Sanjeeva Pravarsha Erodula** · Powered by Python & Streamlit")
+st.markdown("🛠️ Built by **Surya Sanjeeva Pravarsha Erodula** · Powered by Streamlit")
