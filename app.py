@@ -1,5 +1,3 @@
-from scraper import run_scraper
-
 import streamlit as st
 import pandas as pd
 import datetime
@@ -8,15 +6,35 @@ from wordcloud import WordCloud
 import matplotlib.pyplot as plt
 
 # -----------------------------------------------
-# 🛠️ Sidebar: Controls
+# 🔍 Debug Block: Torch and Import Check
+# -----------------------------------------------
+st.title("🌐 COSCO News Dashboard")
+
+try:
+    import torch
+    st.success(f"✅ torch loaded: {torch.__version__}")
+except Exception as e:
+    st.error(f"❌ torch import failed: {e}")
+
+try:
+    from scraper import run_scraper
+    st.success("✅ scraper.py imported successfully")
+except Exception as e:
+    st.error(f"❌ scraper import failed: {e}")
+
+# -----------------------------------------------
+# 🛠️ Sidebar Controls
 # -----------------------------------------------
 st.sidebar.title("🛠️ Options")
 
 # ✅ Scrape latest news from all sites
 if st.sidebar.button("🔁 Scrape Latest News"):
     with st.spinner("Scraping... please wait."):
-        run_scraper()
-        st.success("✅ Scraping complete! Dashboard refreshed.")
+        try:
+            run_scraper()
+            st.success("✅ Scraping complete! Dashboard refreshed.")
+        except Exception as e:
+            st.error(f"❌ Scraper failed: {e}")
 
 # 🔍 Keyword filter
 search_keyword = st.sidebar.text_input("Enter keyword to filter articles")
@@ -26,12 +44,17 @@ search_keyword = st.sidebar.text_input("Enter keyword to filter articles")
 # -----------------------------------------------
 @st.cache_data
 def load_data():
+    import os
+    if not os.path.exists("all_sites_summaries3.csv"):
+        st.warning("⚠️ CSV not found. Click 'Scrape Latest News' to generate it.")
+        return pd.DataFrame(columns=["Title", "URL", "Summary", "Site"])
+    
     try:
         df = pd.read_csv("all_sites_summaries3.csv")
         df.dropna(subset=["Title", "URL", "Summary"], inplace=True)
         return df
-    except FileNotFoundError:
-        st.error("CSV file not found. Please scrape articles first.")
+    except Exception as e:
+        st.error(f"❌ Failed to load CSV: {e}")
         return pd.DataFrame(columns=["Title", "URL", "Summary", "Site"])
 
 df = load_data()
@@ -44,23 +67,15 @@ if search_keyword:
 df = df.sort_values(by="URL")
 
 # -----------------------------------------------
-# 🌐 Page Header
-# -----------------------------------------------
-st.title("🌐 COSCO News Dashboard")
-st.caption(f"🗓️ Last Updated: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M')}")
-
-# -----------------------------------------------
 # 📊 Visualizations
 # -----------------------------------------------
 if not df.empty:
-    # 📌 Article count by site
     st.subheader("📊 Article Count by Source Site")
     site_counts = df['Site'].value_counts().reset_index()
     site_counts.columns = ['Site', 'Article Count']
     fig = px.bar(site_counts, x='Site', y='Article Count', title="Number of Articles per Site")
     st.plotly_chart(fig, use_container_width=True)
 
-    # ☁️ Word cloud of titles
     st.subheader("☁️ Word Cloud of Article Titles")
     title_text = ' '.join(df['Title'].dropna().tolist())
     wordcloud = WordCloud(width=800, height=400, background_color='white').generate(title_text)
@@ -70,10 +85,10 @@ if not df.empty:
     st.pyplot(fig_wc)
 
 # -----------------------------------------------
-# 📄 Show article summaries
+# 📄 Article Summaries
 # -----------------------------------------------
 if df.empty:
-    st.warning("No articles found matching your filter.")
+    st.warning("No articles found. Try changing the keyword or scraping again.")
 else:
     for row in df.itertuples():
         site_name = row.Site.replace("https://", "").replace("http://", "").replace("www.", "").rstrip("/")
@@ -84,13 +99,13 @@ else:
         st.markdown("---")
 
 # -----------------------------------------------
-# 📥 Optional: CSV Download
+# ⬇️ CSV Download Option
 # -----------------------------------------------
 if not df.empty:
     csv = df.to_csv(index=False).encode('utf-8')
     st.download_button("⬇️ Download CSV", csv, "cosco_summaries.csv", "text/csv")
 
 # -----------------------------------------------
-# Footer
+# 🧾 Footer
 # -----------------------------------------------
 st.markdown("🛠️ Built by **Surya Sanjeeva Pravarsha Erodula** · Powered by Python & Streamlit")
