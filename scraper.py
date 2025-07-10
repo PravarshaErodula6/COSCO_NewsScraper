@@ -7,15 +7,16 @@ from datetime import datetime
 import torch
 import os
 
+# 🔧 Fixed: Removed 'cache_dir' (it caused summarizer error)
 summarizer = pipeline(
     "summarization",
     model="sshleifer/distilbart-cnn-12-6",
     tokenizer="sshleifer/distilbart-cnn-12-6",
     framework="pt",
-    device=-1,
-    cache_dir=".models"
+    device=-1
 )
 
+# 🌍 Sites to scrape
 urls_to_scrape = [
     "https://www.offshorewind.biz/",
     "https://www.upstreamonline.com/",
@@ -28,16 +29,19 @@ urls_to_scrape = [
     "https://www.tradewindsnews.com/"
 ]
 
+# 🔍 Keywords to search
 keywords = [
     "FID", "LNG", "Offshore", "Drilling", "Shell", "Transocean",
     "Floating Wind", "Pipelay Vessel"
 ]
 
+# ❌ Skip unwanted links
 skip_words = [
     "about", "privacy", "cookie", "contact", "events", "magazine", "tag", "topic",
     "category", "terms", ".pdf", "advertise", "media", "jobs", "newsletter", "feedback"
 ]
 
+# 📰 Article HTML classes
 article_classes = [
     "article__body", "entry-content", "article-body", "post-content", "main-content",
     "td-post-content", "article-content", "single-content", "c-article-body"
@@ -124,9 +128,13 @@ def run_scraper():
 
     df = pd.DataFrame(all_results)
 
-    # Save CSV right beside app.py
+    # 💾 Save to CSV beside app.py
     csv_path = os.path.join(os.path.dirname(__file__), "all_sites_summaries3.csv")
     df.to_csv(csv_path, index=False)
 
     print(f"\n📦 CSV updated at: {csv_path}")
     print(f"📝 Total Articles Saved: {len(df)}")
+
+# Run the scraper if called directly
+if __name__ == "__main__":
+    run_scraper()
