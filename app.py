@@ -2,7 +2,6 @@ from scraper import run_scraper  # ✅ Must be first
 
 import streamlit as st
 import pandas as pd
-import datetime
 import plotly.express as px
 from wordcloud import WordCloud
 import matplotlib.pyplot as plt
@@ -16,7 +15,6 @@ st.title("🌐 COSCO News Dashboard")
 # -----------------------------------------------
 st.sidebar.title("🛠️ Options")
 
-# ✅ Scrape latest news
 if st.sidebar.button("🔁 Scrape Latest News"):
     with st.spinner("Scraping... please wait."):
         try:
@@ -24,8 +22,8 @@ if st.sidebar.button("🔁 Scrape Latest News"):
             st.success("✅ Scraping complete! Dashboard refreshed.")
         except Exception as e:
             st.error(f"❌ Scraper failed: {e}")
+            st.sidebar.text(f"Debug: {e}")
 
-# 🔍 Keyword filter
 search_keyword = st.sidebar.text_input("Enter keyword to filter articles")
 
 # -----------------------------------------------
@@ -39,7 +37,8 @@ def load_data():
         return pd.DataFrame(columns=["Site", "Title", "URL", "Summary", "Scraped_At"])
     try:
         df = pd.read_csv(csv_file)
-        df.dropna(subset=["Title", "URL", "Summary"], inplace=True)
+        df.dropna(subset=["Title", "URL"], inplace=True)
+        df["Summary"] = df["Summary"].fillna("Summary not available.")
         return df
     except Exception as e:
         st.error(f"❌ Failed to load CSV: {e}")
@@ -49,7 +48,13 @@ df = load_data()
 
 # 🔍 Filter
 if search_keyword:
-    df = df[df["Title"].str.contains(search_keyword, case=False) | df["Summary"].str.contains(search_keyword, case=False)]
+    try:
+        df = df[
+            df["Title"].str.contains(search_keyword, case=False, na=False) |
+            df["Summary"].str.contains(search_keyword, case=False, na=False)
+        ]
+    except Exception as e:
+        st.sidebar.error(f"❌ Filter error: {e}")
 
 # ✅ Sort
 df = df.sort_values(by="Scraped_At", ascending=False)
@@ -58,18 +63,25 @@ df = df.sort_values(by="Scraped_At", ascending=False)
 # 📊 Visualization
 # -----------------------------------------------
 if not df.empty:
-    st.subheader("📊 Article Count by Site")
-    site_counts = df['Site'].value_counts().reset_index()
-    site_counts.columns = ['Site', 'Article Count']
-    fig = px.bar(site_counts, x='Site', y='Article Count')
-    st.plotly_chart(fig, use_container_width=True)
+    try:
+        st.subheader("📊 Article Count by Site")
+        site_counts = df['Site'].value_counts().reset_index()
+        site_counts.columns = ['Site', 'Article Count']
+        fig = px.bar(site_counts, x='Site', y='Article Count')
+        st.plotly_chart(fig, use_container_width=True)
+    except Exception as e:
+        st.warning(f"⚠️ Chart error: {e}")
 
-    st.subheader("☁️ Word Cloud from Titles")
-    wordcloud = WordCloud(width=800, height=400, background_color='white').generate(' '.join(df['Title']))
-    fig_wc, ax = plt.subplots(figsize=(10, 4))
-    ax.imshow(wordcloud, interpolation='bilinear')
-    ax.axis("off")
-    st.pyplot(fig_wc)
+    try:
+        st.subheader("☁️ Word Cloud from Titles")
+        text = ' '.join(df['Title'].dropna().astype(str))
+        wordcloud = WordCloud(width=800, height=400, background_color='white').generate(text)
+        fig_wc, ax = plt.subplots(figsize=(10, 4))
+        ax.imshow(wordcloud, interpolation='bilinear')
+        ax.axis("off")
+        st.pyplot(fig_wc)
+    except Exception as e:
+        st.warning(f"⚠️ WordCloud error: {e}")
 
 # -----------------------------------------------
 # 📋 Show Articles
@@ -82,7 +94,7 @@ else:
         st.markdown(f"🌐 **{row.Site}** · 🕒 _{row.Scraped_At}_")
         st.subheader(row.Title)
         st.markdown(f"[🔗 Read Article]({row.URL})", unsafe_allow_html=True)
-        st.write(row.Summary)
+        st.write(row.Summary if isinstance(row.Summary, str) else "Summary not available.")
         st.markdown("---")
 
 # -----------------------------------------------
