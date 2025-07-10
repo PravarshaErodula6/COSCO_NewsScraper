@@ -8,6 +8,7 @@ import torch
 import os
 import time
 
+# 🔧 Summarizer with retry handling
 summarizer = pipeline(
     "summarization",
     model="sshleifer/distilbart-cnn-12-6",
@@ -16,6 +17,7 @@ summarizer = pipeline(
     device=-1
 )
 
+# 🌍 Websites to scrape
 urls_to_scrape = [
     "https://www.offshorewind.biz/",
     "https://www.upstreamonline.com/",
@@ -28,16 +30,19 @@ urls_to_scrape = [
     "https://www.tradewindsnews.com/"
 ]
 
+# 🔍 Keywords of interest
 keywords = [
     "FID", "LNG", "Offshore", "Drilling", "Shell", "Transocean",
     "Floating Wind", "Pipelay Vessel"
 ]
 
+# ❌ Words to avoid
 skip_words = [
     "about", "privacy", "cookie", "contact", "events", "magazine", "tag", "topic",
     "category", "terms", ".pdf", "advertise", "media", "jobs", "newsletter", "feedback"
 ]
 
+# 📰 Common article content containers
 article_classes = [
     "article__body", "entry-content", "article-body", "post-content", "main-content",
     "td-post-content", "article-content", "single-content", "c-article-body"
@@ -85,14 +90,7 @@ def extract_content(url):
                 if len(text) > 100:
                     return text.strip()[:3000]
 
-        # Fallback: extract from <article>, <main>, <body>
-        for tag in ["article", "main", "body"]:
-            container = soup.find(tag)
-            if container:
-                text = " ".join(p.get_text() for p in container.find_all("p"))
-                if len(text) > 100:
-                    return text.strip()[:3000]
-
+        # Fallback: extract all <p> tags
         text = " ".join(p.get_text() for p in soup.find_all("p"))
         return text.strip()[:3000] if len(text) > 100 else None
     except Exception as e:
@@ -104,14 +102,12 @@ def summarize(text, retries=2):
         try:
             if not text or len(text.split()) < 50:
                 return "Summary not available."
-            if len(text.split()) > 900:
-                text = " ".join(text.split()[:900])
             summary = summarizer(text, max_length=100, min_length=30, do_sample=False)
             return summary[0]["summary_text"]
         except Exception as e:
             print(f"⚠️ Attempt {attempt+1}: Summarization error: {e}")
             time.sleep(2)
-    return "Summary not available."
+    return "Summary failed after retries."
 
 def run_scraper():
     all_results = []
@@ -135,10 +131,14 @@ def run_scraper():
             print(f"✅ Summary: {summary[:90]}...\n{'-'*60}")
 
     df = pd.DataFrame(all_results)
+
+    # 💾 Save to CSV beside app.py
     csv_path = os.path.join(os.path.dirname(__file__), "all_sites_summaries3.csv")
     df.to_csv(csv_path, index=False)
+
     print(f"\n📦 CSV updated at: {csv_path}")
     print(f"📝 Total Articles Saved: {len(df)}")
 
+# Run directly from CLI
 if __name__ == "__main__":
     run_scraper()
