@@ -1,5 +1,4 @@
-from scraper import run_scraper  # ✅ Must be first
-
+from scraper import run_scraper
 import streamlit as st
 import pandas as pd
 import datetime
@@ -11,12 +10,8 @@ import os
 st.set_page_config(page_title="COSCO News Dashboard", layout="wide")
 st.title("🌐 COSCO News Dashboard")
 
-# -----------------------------------------------
-# 🛠️ Sidebar Controls
-# -----------------------------------------------
 st.sidebar.title("🛠️ Options")
 
-# ✅ Scrape latest news
 if st.sidebar.button("🔁 Scrape Latest News"):
     with st.spinner("Scraping... please wait."):
         try:
@@ -25,12 +20,8 @@ if st.sidebar.button("🔁 Scrape Latest News"):
         except Exception as e:
             st.error(f"❌ Scraper failed: {e}")
 
-# 🔍 Keyword filter
 search_keyword = st.sidebar.text_input("Enter keyword to filter articles")
 
-# -----------------------------------------------
-# 📄 Load CSV
-# -----------------------------------------------
 @st.cache_data
 def load_data():
     csv_file = os.path.join(os.path.dirname(__file__), "all_sites_summaries3.csv")
@@ -47,16 +38,11 @@ def load_data():
 
 df = load_data()
 
-# 🔍 Filter
 if search_keyword:
     df = df[df["Title"].str.contains(search_keyword, case=False) | df["Summary"].str.contains(search_keyword, case=False)]
 
-# ✅ Sort
 df = df.sort_values(by="Scraped_At", ascending=False)
 
-# -----------------------------------------------
-# 📊 Visualization
-# -----------------------------------------------
 if not df.empty:
     st.subheader("📊 Article Count by Site")
     site_counts = df['Site'].value_counts().reset_index()
@@ -71,9 +57,6 @@ if not df.empty:
     ax.axis("off")
     st.pyplot(fig_wc)
 
-# -----------------------------------------------
-# 📋 Show Articles
-# -----------------------------------------------
 if df.empty:
     st.warning("No articles found.")
 else:
@@ -82,12 +65,12 @@ else:
         st.markdown(f"🌐 **{row.Site}** · 🕒 _{row.Scraped_At}_")
         st.subheader(row.Title)
         st.markdown(f"[🔗 Read Article]({row.URL})", unsafe_allow_html=True)
-        st.write(row.Summary)
+        if "not available" in row.Summary.lower():
+            st.warning("⚠️ Summary not available.")
+        else:
+            st.write(row.Summary)
         st.markdown("---")
 
-# -----------------------------------------------
-# ⬇️ Download
-# -----------------------------------------------
 if not df.empty:
     csv = df.to_csv(index=False).encode("utf-8")
     st.download_button("⬇️ Download CSV", csv, "cosco_summaries.csv", "text/csv")
