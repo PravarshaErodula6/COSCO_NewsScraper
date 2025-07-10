@@ -6,8 +6,9 @@ from urllib.parse import urljoin, urlparse
 from datetime import datetime
 import torch
 import os
+import time
 
-# 🔧 Fixed: Removed 'cache_dir' (it caused summarizer error)
+# 🔧 Summarizer with retry handling
 summarizer = pipeline(
     "summarization",
     model="sshleifer/distilbart-cnn-12-6",
@@ -16,7 +17,7 @@ summarizer = pipeline(
     device=-1
 )
 
-# 🌍 Sites to scrape
+# 🌍 Websites to scrape
 urls_to_scrape = [
     "https://www.offshorewind.biz/",
     "https://www.upstreamonline.com/",
@@ -29,19 +30,19 @@ urls_to_scrape = [
     "https://www.tradewindsnews.com/"
 ]
 
-# 🔍 Keywords to search
+# 🔍 Keywords of interest
 keywords = [
     "FID", "LNG", "Offshore", "Drilling", "Shell", "Transocean",
     "Floating Wind", "Pipelay Vessel"
 ]
 
-# ❌ Skip unwanted links
+# ❌ Words to avoid
 skip_words = [
     "about", "privacy", "cookie", "contact", "events", "magazine", "tag", "topic",
     "category", "terms", ".pdf", "advertise", "media", "jobs", "newsletter", "feedback"
 ]
 
-# 📰 Article HTML classes
+# 📰 Common article content containers
 article_classes = [
     "article__body", "entry-content", "article-body", "post-content", "main-content",
     "td-post-content", "article-content", "single-content", "c-article-body"
@@ -89,21 +90,24 @@ def extract_content(url):
                 if len(text) > 100:
                     return text.strip()[:3000]
 
+        # Fallback: extract all <p> tags
         text = " ".join(p.get_text() for p in soup.find_all("p"))
         return text.strip()[:3000] if len(text) > 100 else None
     except Exception as e:
         print(f"⚠️ Error extracting from {url}: {e}")
         return None
 
-def summarize(text):
-    try:
-        if not text or len(text.split()) < 50:
-            return "Summary not available."
-        summary = summarizer(text, max_length=100, min_length=30, do_sample=False)
-        return summary[0]["summary_text"]
-    except Exception as e:
-        print(f"⚠️ Summarization error: {e}")
-        return "Summary failed."
+def summarize(text, retries=2):
+    for attempt in range(retries):
+        try:
+            if not text or len(text.split()) < 50:
+                return "Summary not available."
+            summary = summarizer(text, max_length=100, min_length=30, do_sample=False)
+            return summary[0]["summary_text"]
+        except Exception as e:
+            print(f"⚠️ Attempt {attempt+1}: Summarization error: {e}")
+            time.sleep(2)
+    return "Summary failed after retries."
 
 def run_scraper():
     all_results = []
@@ -114,7 +118,7 @@ def run_scraper():
         print(f"✅ Found {len(articles)} keyword-matching articles.")
 
         for title, url in articles:
-            print(f"🔎 {title}\n🔗 {url}")
+            print(f"\n🔎 {title}\n🔗 {url}")
             content = extract_content(url)
             summary = summarize(content)
             all_results.append({
@@ -124,7 +128,7 @@ def run_scraper():
                 "Summary": summary,
                 "Scraped_At": datetime.now().strftime("%Y-%m-%d %H:%M")
             })
-            print(f"✅ Summary: {summary[:80]}...\n{'-'*60}")
+            print(f"✅ Summary: {summary[:90]}...\n{'-'*60}")
 
     df = pd.DataFrame(all_results)
 
@@ -135,6 +139,6 @@ def run_scraper():
     print(f"\n📦 CSV updated at: {csv_path}")
     print(f"📝 Total Articles Saved: {len(df)}")
 
-# Run the scraper if called directly
+# Run directly from CLI
 if __name__ == "__main__":
     run_scraper()
