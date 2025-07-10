@@ -67,8 +67,6 @@ def extract_article_links(site_url):
                 continue
             if any(x in href.lower() for x in skip_words):
                 continue
-            if href.rstrip("/").endswith(".biz"):
-                continue
             full_url = urljoin(site_url, href)
             if any(k.lower() in title.lower() for k in keywords):
                 article_links.add((title, full_url))
@@ -90,7 +88,6 @@ def extract_content(url):
                 if len(text) > 100:
                     return text.strip()[:3000]
 
-        # Fallback: extract all <p> tags
         text = " ".join(p.get_text() for p in soup.find_all("p"))
         return text.strip()[:3000] if len(text) > 100 else None
     except Exception as e:
@@ -132,13 +129,18 @@ def run_scraper():
 
     df = pd.DataFrame(all_results)
 
-    # 💾 Save to CSV beside app.py
+    # ✅ Ensure all expected columns exist and are safe
+    for col in ["Site", "Title", "URL", "Summary", "Scraped_At"]:
+        if col not in df.columns:
+            df[col] = ""
+    df.dropna(subset=["Site", "Title", "URL", "Scraped_At"], inplace=True)
+    df["Summary"] = df["Summary"].fillna("Summary not available.")
+
     csv_path = os.path.join(os.path.dirname(__file__), "all_sites_summaries3.csv")
-    df.to_csv(csv_path, index=False)
+    df.to_csv(csv_path, index=False, quoting=1)
 
     print(f"\n📦 CSV updated at: {csv_path}")
     print(f"📝 Total Articles Saved: {len(df)}")
 
-# Run directly from CLI
 if __name__ == "__main__":
     run_scraper()
