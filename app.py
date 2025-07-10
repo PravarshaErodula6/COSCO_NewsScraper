@@ -94,3 +94,20 @@ if not df.empty:
     st.download_button("⬇️ Download CSV", csv, "cosco_summaries.csv", "text/csv")
 
 st.markdown("🛠️ Built by **Surya Sanjeeva Pravarsha Erodula**")
+Articles")
+    for row in df.itertuples():
+        st.markdown(f"🌐 **{row.Site}** · 🕒 _{row.Scraped_At}_")
+        st.subheader(row.Title)
+        st.markdown(f"[🔗 Read Article]({row.URL})", unsafe_allow_html=True)
+        summary_text = row.Summary if isinstance(row.Summary, str) else "Summary not available."
+        st.write(summary_text)
+        st.markdown("---")
+
+# -----------------------------------------------
+# ⬇️ Download
+# -----------------------------------------------
+if not df.empty:
+    csv = df.to_csv(index=False).encode("utf-8")
+    st.download_button("⬇️ Download CSV", csv, "cosco_summaries.csv", "text/csv")
+
+st.markdown("🛠️ Built by **Surya Sanjeeva Pravarsha Erodula**")
